@@ -3,11 +3,14 @@ import '../models/student.dart';
 import 'student_item.dart';
 import 'NewStudent.dart';
 
-class StudentsScreen extends StatefulWidget  {
-  StudentsScreen({super.key});
-@override
+class StudentsScreen extends StatefulWidget {
+  const StudentsScreen({super.key});
+
+  @override
   State<StudentsScreen> createState() => _StudentsScreenState();
-  // Список студентів
+}
+
+class _StudentsScreenState extends State<StudentsScreen> {
   final List<Student> students = [
     Student(
       firstName: 'Олег',
@@ -33,52 +36,10 @@ class StudentsScreen extends StatefulWidget  {
     // Додайте більше студентів 
   ];
 
+  Student? _recentlyDeletedStudent; // Зберігає видаленого студента для Undo
+  int? _recentlyDeletedIndex; // Зберігає індекс видаленого студента
 
-
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Students'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              // Логіка для додавання студента, наприклад, відкриття форми
-            },
-          ),
-        ],
-      ),
-      body: ListView.separated(
-        itemCount: students.length,
-        itemBuilder: (ctx, index) {
-          return StudentItem(student: students[index]);
-        },
-        separatorBuilder: (ctx, index) => Divider(height: 1, color: Colors.grey[300]),
-      ),
-    );
-  }
-}
-
-
-
-class _StudentsScreenState extends State<StudentsScreen> {
-  final List<Student> students = [
-    Student(
-      firstName: 'John',
-      lastName: 'Doe',
-      department: Department.it,
-      grade: 90,
-      gender: Gender.male,
-    ),
-    Student(
-      firstName: 'Jane',
-      lastName: 'Smith',
-      department: Department.finance,
-      grade: 85,
-      gender: Gender.female,
-    ),
-  ];
-
+/*
   void _addStudent() {
     showModalBottomSheet(
       context: context,
@@ -93,7 +54,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
         );
       },
     );
-  }
+  }*/
 
   void _editStudent(Student student) {
     showModalBottomSheet(
@@ -113,7 +74,39 @@ class _StudentsScreenState extends State<StudentsScreen> {
     );
   }
 
-  @override
+  void _deleteStudent(int index) {
+    setState(() {
+      _recentlyDeletedStudent = students[index];
+      _recentlyDeletedIndex = index;
+      students.removeAt(index); // Видаляємо студента зі списку
+    });
+
+    // Показуємо Snackbar із можливістю скасування
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Deleted ${_recentlyDeletedStudent!.firstName} ${_recentlyDeletedStudent!.lastName}',
+        ),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: _undoDelete, // Повертаємо видаленого студента
+        ),
+        duration: const Duration(seconds: 3), // Тривалість показу Snackbar
+      ),
+    );
+  }
+
+  void _undoDelete() {
+    if (_recentlyDeletedStudent != null && _recentlyDeletedIndex != null) {
+      setState(() {
+        students.insert(_recentlyDeletedIndex!, _recentlyDeletedStudent!);
+        _recentlyDeletedStudent = null;
+        _recentlyDeletedIndex = null;
+      });
+    }
+  }
+
+    @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -121,19 +114,47 @@ class _StudentsScreenState extends State<StudentsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: _addStudent, // Викликаємо функцію додавання
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (ctx) {
+                  return NewStudent(
+                    onSave: (newStudent) {
+                      setState(() {
+                        students.add(newStudent);
+                      });
+                    },
+                  );
+                },
+              );
+            },
           ),
         ],
       ),
       body: ListView.separated(
         itemCount: students.length,
         itemBuilder: (ctx, index) {
-          return GestureDetector(
-            onTap: () => _editStudent(students[index]), // Редагуємо при натисканні
-            child: StudentItem(student: students[index]),
+          return Dismissible(
+            key: ValueKey(students[index]),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              color: Colors.red,
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: const Icon(Icons.delete, color: Colors.white),
+            ),
+            onDismissed: (direction) {
+              _deleteStudent(index);
+            },
+            child: InkWell(
+              onTap: () => _editStudent(students[index]),
+              child: StudentItem(student: students[index]),
+            ),
           );
         },
-        separatorBuilder: (ctx, index) => Divider(height: 1, color: Colors.grey[300]),
+        separatorBuilder: (ctx, index) =>
+            Divider(height: 1, color: Colors.grey[300]),
       ),
     );
   }

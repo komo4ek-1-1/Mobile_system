@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import '../models/student.dart';
 
@@ -5,7 +6,7 @@ class NewStudent extends StatefulWidget {
   final Student? student; // Якщо null, то це додавання; якщо є - редагування
   final Function(Student) onSave; // Callback для збереження студента
 
-  const NewStudent({Key? key, this.student, required this.onSave}) : super(key: key);
+  const NewStudent({super.key, this.student, required this.onSave});
 
   @override
   State<NewStudent> createState() => _NewStudentState();
